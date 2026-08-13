@@ -1,0 +1,121 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UrgencyLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ConflictStatus {
+  CLEARED
+  POTENTIAL_CONFLICT
+}
+
+model PracticeArea {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  description  String?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  routingRules RoutingRule[]
+
+  @@map("practice_areas")
+}
+
+model LawyerTeam {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  email        String        @unique
+  leadAttorney String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  routingRules RoutingRule[]
+  intakes      Intake[]      @relation("TeamIntakes")
+  users        User[]        @relation("TeamUsers")
+
+  @@map("lawyer_teams")
+}
+
+model RoutingRule {
+  id             String       @id @default(uuid())
+  practiceAreaId String
+  practiceArea   PracticeArea @relation(fields: [practiceAreaId], references: [id], onDelete: Cascade)
+  assignedTeamId String
+  assignedTeam   LawyerTeam   @relation(fields: [assignedTeamId], references: [id], onDelete: Cascade)
+  priority       Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("routing_rules")
+}
+
+model Intake {
+  id               String         @id @default(uuid())
+  referenceId      String         @unique // e.g. "LF-2026-XXXX"
+  clientName       String
+  clientEmail      String?
+  clientPhone      String?
+  clientLocation   String?
+  practiceArea     String
+  urgency          UrgencyLevel   @default(MEDIUM)
+  urgencyScore     Int            @default(50)
+  summary          String         @db.Text
+  rawInquiry       String         @db.Text
+  conflictStatus   ConflictStatus @default(CLEARED)
+  estValue         String?
+  assignedAttorney String?
+  assignedTeamId   String?
+  assignedTeam     LawyerTeam?    @relation("TeamIntakes", fields: [assignedTeamId], references: [id])
+  status           String         @default("NEW") // "NEW", "UNDER_REVIEW", "ARCHIVED"
+  incidentDate     String?
+  relevantParties  String?        // comma-separated or JSON
+  desiredOutcome   String?
+  missingInfo      String?        // comma-separated or JSON
+  chatHistory      String?        // JSON chat history logs
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  notifications    Notification[]
+
+  @@map("intakes")
+}
+
+model Notification {
+  id           String   @id @default(uuid())
+  intakeId     String
+  intake       Intake   @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+  type         String   // "EMAIL", "TELEGRAM"
+  status       String   // "SENT", "FAILED"
+  recipient    String?
+  errorMessage String?
+  sentAt       DateTime @default(now())
+
+  @@map("notifications")
+}
+
+enum Role {
+  ADMIN
+  LAWYER
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  passwordHash String
+  role         Role        @default(LAWYER)
+  name         String
+  teamId       String?     // For LAWYER role, links to their LawyerTeam
+  team         LawyerTeam? @relation("TeamUsers", fields: [teamId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("users")
+}
