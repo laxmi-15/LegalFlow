@@ -13,9 +13,13 @@ export const EmailService = {
   async sendEmail(payload: EmailPayload, intakeId?: string, isClientConfirmation?: boolean): Promise<boolean> {
     const apiKey = process.env.RESEND_API_KEY;
     const recipient = payload.to;
+    const fromEmail = process.env.RESEND_FROM_EMAIL || "LegalFlow Notifications <onboarding@resend.dev>";
+    const emailMode = (process.env.EMAIL_MODE || "sandbox").toLowerCase().trim();
     
     console.log(`\n--- [EMAIL DISPATCH LOG] ---`);
     console.log(`To: ${recipient}`);
+    console.log(`From: ${fromEmail}`);
+    console.log(`Mode: ${emailMode}`);
     console.log(`Subject: ${payload.subject}`);
     console.log(`Content Preview:`);
     console.log(payload.htmlContent.replace(/<[^>]*>/g, " ").substring(0, 300) + "...");
@@ -33,7 +37,7 @@ export const EmailService = {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "LegalFlow Notifications <onboarding@resend.dev>",
+            from: fromEmail,
             to: recipient,
             subject: payload.subject,
             html: payload.htmlContent,
@@ -49,7 +53,12 @@ export const EmailService = {
           console.error(`[EmailService] Resend dispatch failed: ${errorMessage}`);
 
           // Self-healing fallback for Resend Sandbox/Free Tier restrictions (only for internal staff, not client emails)
-          if (!isClientConfirmation && response.status === 403 && errText.includes("You can only send testing emails to your own email address")) {
+          if (
+            emailMode === "sandbox" &&
+            !isClientConfirmation && 
+            response.status === 403 && 
+            errText.includes("You can only send testing emails to your own email address")
+          ) {
             const match = errText.match(/own email address \(([^)]+)\)/);
             const verifiedEmail = match ? match[1] : null;
 
@@ -63,7 +72,7 @@ export const EmailService = {
                     "Content-Type": "application/json",
                   },
                   body: JSON.stringify({
-                    from: "LegalFlow Notifications <onboarding@resend.dev>",
+                    from: fromEmail,
                     to: verifiedEmail,
                     subject: `[Sandbox Route for ${recipient}] ${payload.subject}`,
                     html: payload.htmlContent,
