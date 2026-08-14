@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.service";
+import { Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 // Urgency level enum type matching Prisma
@@ -136,61 +137,41 @@ export async function initializeDatabase() {
       });
     }
     
-    // Seed default users if database is empty of users
-    const userCount = await prisma.user.count();
-    if (userCount === 0) {
-      console.log("🌱 Database users empty. Seeding default ADMIN and LAWYER accounts...");
-      const demoPasswordHash = await bcrypt.hash("LegalFlowDemo2026!", 10);
-      
-      await prisma.user.create({
-        data: {
-          email: "admin@legalflow.com",
-          name: "Global Administrator",
+    // Always seed/upsert default users to ensure all department accounts exist
+    console.log("🌱 Syncing default ADMIN and LAWYER accounts for all departments...");
+    const demoPasswordHash = await bcrypt.hash("LegalFlowDemo2026!", 10);
+    
+    const defaultUsers = [
+      { email: "admin@legalflow.com", name: "Global Administrator", role: "ADMIN", teamName: null },
+      { email: "injury@legalflow.com", name: "Thomas Sterling, Esq.", role: "LAWYER", teamName: "Personal Injury Team" },
+      { email: "family@legalflow.com", name: "Sophia Martinez, JD", role: "LAWYER", teamName: "Family Law Team" },
+      { email: "criminal@legalflow.com", name: "Jonathan Kross, Esq.", role: "LAWYER", teamName: "Criminal Law Team" },
+      { email: "employment@legalflow.com", name: "Elena Vance, Esq.", role: "LAWYER", teamName: "Employment Law Team" },
+      { email: "immigration@legalflow.com", name: "Mateo Ruiz, JD", role: "LAWYER", teamName: "Immigration Law Team" },
+      { email: "property@legalflow.com", name: "Evelyn Wright, Esq.", role: "LAWYER", teamName: "Property Law Team" },
+      { email: "corporate@legalflow.com", name: "Alexander Pierce, JD", role: "LAWYER", teamName: "Corporate Law Team" },
+      { email: "general@legalflow.com", name: "Gabriel Stone, Esq.", role: "LAWYER", teamName: "General Intake Team" },
+    ];
+
+    for (const u of defaultUsers) {
+      const teamObj = u.teamName ? createdTeams[u.teamName] : null;
+      await prisma.user.upsert({
+        where: { email: u.email },
+        update: {
+          name: u.name,
+          role: u.role as Role,
+          teamId: teamObj ? teamObj.id : null,
+        },
+        create: {
+          email: u.email,
+          name: u.name,
           passwordHash: demoPasswordHash,
-          role: "ADMIN",
+          role: u.role as Role,
+          teamId: teamObj ? teamObj.id : null,
         },
       });
-
-      const injuryTeam = createdTeams["Personal Injury Team"];
-      if (injuryTeam) {
-        await prisma.user.create({
-          data: {
-            email: "injury@legalflow.com",
-            name: "Thomas Sterling, Esq.",
-            passwordHash: demoPasswordHash,
-            role: "LAWYER",
-            teamId: injuryTeam.id,
-          },
-        });
-      }
-
-      const familyTeam = createdTeams["Family Law Team"];
-      if (familyTeam) {
-        await prisma.user.create({
-          data: {
-            email: "family@legalflow.com",
-            name: "Sophia Martinez, JD",
-            passwordHash: demoPasswordHash,
-            role: "LAWYER",
-            teamId: familyTeam.id,
-          },
-        });
-      }
-
-      const employmentTeam = createdTeams["Employment Law Team"];
-      if (employmentTeam) {
-        await prisma.user.create({
-          data: {
-            email: "employment@legalflow.com",
-            name: "Elena Vance, Esq.",
-            passwordHash: demoPasswordHash,
-            role: "LAWYER",
-            teamId: employmentTeam.id,
-          },
-        });
-      }
-      console.log("✅ Database user seeding complete.");
     }
+    console.log("✅ Database user seeding complete.");
     
     // Seed database if empty
     const areaCount = await prisma.practiceArea.count();
