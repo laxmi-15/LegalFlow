@@ -87,7 +87,8 @@ export function DashboardPreview() {
 
   const fetchLiveIntakes = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/intake");
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${apiBase}/api/intake`);
       if (res.ok) {
         const json = await res.json();
         if (json.data && Array.isArray(json.data) && json.data.length > 0) {

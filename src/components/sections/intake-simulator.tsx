@@ -91,7 +91,8 @@ export function IntakeSimulator() {
     let fetchedData = null;
 
     try {
-      const response = await fetch("http://localhost:5000/api/intake", {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await fetch(`${apiBase}/api/intake`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

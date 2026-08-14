@@ -10,4 +10,5 @@ export const ENV = {
   TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || "",
   TELEGRAM_CHAT_ID: process.env.TELEGRAM_CHAT_ID || "",
   JWT_SECRET: process.env.JWT_SECRET || "legalflow_secret_key_2026_xyz123",
+  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000",
 };
