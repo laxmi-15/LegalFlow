@@ -102,14 +102,14 @@ const defaultPracticeAreas = [
 ];
 
 const defaultLawyerTeams = [
-  { name: "Personal Injury Team", leadAttorney: "Thomas Sterling, Esq.", email: "laxmiml027+injury@gmail.com" },
-  { name: "Family Law Team", leadAttorney: "Sophia Martinez, JD", email: "lml150220+family@gmail.com" },
-  { name: "Criminal Law Team", leadAttorney: "Jonathan Kross, Esq.", email: "laxmiml025+criminal@gmail.com" },
-  { name: "Employment Law Team", leadAttorney: "Elena Vance, Esq.", email: "laxmiml025+employment@gmail.com" },
-  { name: "Immigration Law Team", leadAttorney: "Mateo Ruiz, JD", email: "laxmiml027+immigration@gmail.com" },
-  { name: "Property Law Team", leadAttorney: "Evelyn Wright, Esq.", email: "lml150220+property@gmail.com" },
-  { name: "Corporate Law Team", leadAttorney: "Alexander Pierce, JD", email: "laxmiml025+corporate@gmail.com" },
-  { name: "General Intake Team", leadAttorney: "Gabriel Stone, Esq.", email: "laxmiml027+general@gmail.com" },
+  { name: "Personal Injury Team", leadAttorney: "Thomas Sterling, Esq.", email: "laxmiml025@gmail.com" },
+  { name: "Family Law Team", leadAttorney: "Sophia Martinez, JD", email: "laxmiml027@gmail.com" },
+  { name: "Criminal Law Team", leadAttorney: "Jonathan Kross, Esq.", email: "lml150220@gmail.com" },
+  { name: "Employment Law Team", leadAttorney: "Elena Vance, Esq.", email: "laxmiml025@gmail.com" },
+  { name: "Immigration Law Team", leadAttorney: "Mateo Ruiz, JD", email: "laxmiml027@gmail.com" },
+  { name: "Property Law Team", leadAttorney: "Evelyn Wright, Esq.", email: "lml150220@gmail.com" },
+  { name: "Corporate Law Team", leadAttorney: "Alexander Pierce, JD", email: "laxmiml025@gmail.com" },
+  { name: "General Intake Team", leadAttorney: "Gabriel Stone, Esq.", email: "laxmiml027@gmail.com" },
 ];
 
 export async function initializeDatabase() {

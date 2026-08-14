@@ -329,9 +329,41 @@ class HeuristicFallbackProvider implements LLMProvider {
 
   async generateChatResponse(chatHistory: ChatMessage[], _systemInstructions: string): Promise<string> {
     const lastMsg = chatHistory[chatHistory.length - 1]?.content || "";
-    const lower = lastMsg.toLowerCase();
     
-    if (lower.includes("case") || lower.includes("sue") || lower.includes("lawyer")) {
+    // Helper function to detect intent-based legal advice/conclusions/predictions
+    const detectLegalAdviceIntent = (text: string): boolean => {
+      const msgLower = text.toLowerCase().trim();
+      
+      const winChances = 
+        /\b(?:will|likely|chance|probability|hope|possible|can)\b.*\b(?:win|prevail|succeed|lose)\b/i.test(msgLower) ||
+        /\b(?:my chances|likelihood of winning|how likely am i)\b/i.test(msgLower);
+      
+      const haveCase = 
+        /\b(?:do i|would i)\b.*\b(?:have a case|have a claim|have a lawsuit)\b/i.test(msgLower) ||
+        /\b(?:strength of my|worth of my|assess my|predict the)\b.*\b(?:case|claim|outcome)\b/i.test(msgLower);
+
+      const sueIntent = 
+        /\b(?:should i|can i|how do i|to)\b.*\b(?:sue|file a lawsuit|take legal action|bring to court|prosecute)\b/i.test(msgLower) ||
+        /\b(?:what legal action)\b/i.test(msgLower);
+
+      const requestAdvice = 
+        /\b(?:give me|need|want|get|provide|tell me)\b.*\b(?:legal advice|legal opinion|legal strategy|legal conclusion)\b/i.test(msgLower) ||
+        /\bshould i do legally\b/i.test(msgLower);
+
+      const lawViolation = 
+        /\b(?:violated|violate|broke|break|breach)\b.*\b(?:the law|statute|act|regulation)\b/i.test(msgLower) ||
+        /\b(?:is it|was it)\b.*\b(?:illegal|unlawful)\b/i.test(msgLower);
+
+      const compensation = 
+        /\b(?:how much|amount of)\b.*\b(?:compensation|money|payout|recovery|damages|value)\b.*\b(?:get|worth|receive|entitled|expect)\b/i.test(msgLower);
+
+      const lawApplies = 
+        /\b(?:which|what)\b.*\blaw\b.*\b(?:applies|apply)\b/i.test(msgLower);
+
+      return winChances || haveCase || sueIntent || requestAdvice || lawViolation || compensation || lawApplies;
+    };
+
+    if (detectLegalAdviceIntent(lastMsg)) {
       return "I understand you are asking about the legal strength of your matter. As an AI client intake assistant, I cannot provide legal advice or assess whether you have a case. However, I can collect these details so that our qualified attorneys can review your files.";
     }
 
@@ -500,7 +532,11 @@ ${chatHistoryText ? `Conversation History So Far:\n${chatHistoryText}` : ""}`;
 You are conversing with a client. Analyze the chat history and the missing information fields: [${missingInformation.join(", ")}].
 Your goal is to politely and professionally ask a follow-up question to collect the next missing detail.
 Do NOT ask for all details at once. Ask for ONLY ONE detail at a time (e.g. contact email/phone, or the date of incident, or opposing parties).
-If the client asks for legal advice or whether they have a case, you MUST safely refuse: explain that you are an intake assistant and not a lawyer, and you will compile their details for attorney review.
+
+Strict Safety Refusal Boundaries:
+1. If the client asks questions asking for legal conclusions, predictions, specific legal strategy, or whether they have a case / will win (e.g. "Will I win?", "Do I have a case?", "Should I sue?", "Can I sue?", "What are my chances?", "Give me legal advice", "Tell me whether my employer violated the law", "What exactly should I do legally?", "Which law applies to my situation?", "How much compensation can I get?"), you MUST safely refuse: explain that you are an intake assistant and not a lawyer, and you will compile their details for attorney review.
+2. If they are simply making normal intake requests or asking to have a lawyer/attorney review their files, documents, applications, or contracts (e.g. "I want an immigration lawyer to review my visa application", "I need legal help with my property dispute", "I want a lawyer to review my employment contract", "I want an attorney to review my accident documents", "I need a lawyer for my wrongful termination"), you MUST NOT refuse. Treat these as standard intake requests and proceed normally to collect their missing information details.
+
 Be warm, professional, and clear. Do not repeat what they have already answered.`;
 
     return await this.executeWithFallback(
