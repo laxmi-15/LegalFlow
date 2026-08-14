@@ -159,7 +159,7 @@ async function runTests() {
 
   // 8. Auth/RBAC Tests
   console.log("\n--- Testing Authentication & Role-Based Access Control ---");
-  const { listIntakes, getIntakeDetails, completeIntake, startIntake } = require("../controllers/intake.controller");
+  const { listIntakes, getIntakeDetails, completeIntake, startIntake, submitMessage } = require("../controllers/intake.controller");
   const { requireAuth } = require("../middlewares/auth.middleware");
 
   // Mocking helper functions
@@ -267,6 +267,38 @@ async function runTests() {
   const res7 = createMockRes();
   await completeIntake(req7 as any, res7 as any);
   assert(res7.statusCode === 200 && res7.jsonData.data.assignedAttorney === "Firm Counsel", "completeIntake response masks assigned attorney names to prevent public data leaks.");
+
+  // Test 8.8: Admin user can update the status of any intake via system directive
+  const jwt = require("jsonwebtoken");
+  const { ENV } = require("../config/env");
+  const adminToken = jwt.sign({ id: "admin-1", role: "ADMIN", name: "Admin" }, ENV.JWT_SECRET);
+  const req8 = createMockReq(
+    { authorization: `Bearer ${adminToken}` },
+    null,
+    { id: familyIntake.id },
+    { messageText: "System directive: Set status to UNDER_REVIEW" }
+  );
+  const res8 = createMockRes();
+  await submitMessage(req8 as any, res8 as any);
+  const updatedIntakeFromDb = await DBService.getIntakeById(familyIntake.id);
+  assert(
+    res8.statusCode === 200 &&
+    res8.jsonData.success &&
+    updatedIntakeFromDb?.status === "UNDER_REVIEW",
+    "Admin user can successfully update status of an intake via system directive message."
+  );
+
+  // Test 8.9: Lawyer user can update their team's intake status, but gets 403 for other teams
+  const lawyerTokenInjury = jwt.sign({ id: "lawyer-1", role: "LAWYER", name: "Injury Atty", teamId: injuryTeamId }, ENV.JWT_SECRET);
+  const req9 = createMockReq(
+    { authorization: `Bearer ${lawyerTokenInjury}` },
+    null,
+    { id: familyIntake.id }, // familyIntake is mapped to familyTeamId, not injuryTeamId
+    { messageText: "System directive: Set status to COMPLETED" }
+  );
+  const res9 = createMockRes();
+  await submitMessage(req9 as any, res9 as any);
+  assert(res9.statusCode === 403, "LAWYER user gets 403 Forbidden when trying to update status of another team's intake.");
 
   console.log("\n==============================================");
   console.log("📊 TEST RUN SUMMARY");

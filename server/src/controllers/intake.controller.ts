@@ -156,8 +156,32 @@ export async function submitMessage(req: Request, res: Response): Promise<void> 
           res.status(403).json({ success: false, error: "Forbidden", message: "You are not authorized to update status for other teams." });
           return;
         }
-      } catch (err) {
-        res.status(401).json({ success: false, error: "Unauthorized", message: "Invalid or expired session token." });
+
+        const newStatus = messageText.substring("System directive: Set status to ".length).trim();
+        const updated = await DBService.updateIntake(id, {
+          status: newStatus,
+        });
+
+        res.status(200).json({
+          success: true,
+          message: `Status updated to ${newStatus} successfully.`,
+          data: {
+            id: updated.id,
+            referenceId: updated.referenceId,
+            status: updated.status,
+            practiceArea: updated.practiceArea,
+            urgency: updated.urgency,
+            urgencyScore: updated.urgencyScore,
+          }
+        });
+        return;
+      } catch (err: any) {
+        if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+          res.status(401).json({ success: false, error: "Unauthorized", message: "Invalid or expired session token." });
+          return;
+        }
+        console.error("[isStatusUpdate Error]:", err);
+        res.status(500).json({ success: false, error: "Failed to update intake status." });
         return;
       }
     }
