@@ -236,6 +236,45 @@ class HeuristicFallbackProvider implements LLMProvider {
       }
     }
 
+    // Parse the conversation history to check for explicitly declined info
+    const lines = prompt.split("\n");
+    let lastAssistantQuestion = "";
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith("Assistant:")) {
+        lastAssistantQuestion = trimmed.toLowerCase();
+      } else if (trimmed.startsWith("Client:")) {
+        const clientMsg = trimmed.substring(7).trim();
+        const clientMsgLower = clientMsg.toLowerCase();
+        
+        // If client refused/declined contact details after being asked
+        const isRefusal = 
+          clientMsgLower === "no" || 
+          clientMsgLower === "stop" ||
+          clientMsgLower === "stop it" ||
+          clientMsgLower.includes("don't") || 
+          clientMsgLower.includes("dont") || 
+          clientMsgLower.includes("skip") || 
+          clientMsgLower.includes("decline") || 
+          clientMsgLower.includes("prefer not") || 
+          clientMsgLower.includes("private") ||
+          clientMsgLower.includes("already shared") ||
+          clientMsgLower.includes("not sharing") ||
+          clientMsgLower.includes("not providing") ||
+          clientMsgLower.includes("already provided");
+
+        if (isRefusal) {
+          if (lastAssistantQuestion.includes("email") || lastAssistantQuestion.includes("address")) {
+            clientEmail = "Declined";
+          } else if (lastAssistantQuestion.includes("phone") || lastAssistantQuestion.includes("number")) {
+            clientPhone = "Declined";
+          } else if (lastAssistantQuestion.includes("location") || lastAssistantQuestion.includes("city") || lastAssistantQuestion.includes("state")) {
+            clientLocation = "Declined";
+          }
+        }
+      }
+    }
+
     // Urgency rules
     let urgency: "HIGH" | "MEDIUM" | "LOW" = "MEDIUM";
     if (
@@ -363,7 +402,11 @@ export class LLMService {
    */
   async extractIntake(inquiryText: string, chatHistoryText?: string): Promise<ExtractedCaseData> {
     const systemPrompt = `You are a professional AI Legal Client Intake Assistant for LegalFlow.
-Your objective is to analyze the client's story and extract structured details.
+Your objective is to analyze the client's story and the conversation history to extract structured details.
+
+Important Instructions:
+1. You must look at both the initial "Client Inquiry" and the "Conversation History So Far" (if present) to extract details. Clients often provide missing information (such as their email, phone, location, name, or other details) during the chat history. You MUST extract these details when they appear in the history and update the respective fields in the JSON.
+2. If the client explicitly declines, refuses, or indicates they do not wish to share a particular piece of information (such as saying "no", "skip", "decline", "stop it", "not sharing", "already shared"), you MUST set that field's value to "Declined" and remove it from the "missingInformation" array.
 
 Strict Safety Boundaries:
 - NEVER claim to be a lawyer.
